@@ -1641,7 +1641,6 @@ class Model(metaclass=_ModelMeta):
                                              model_set_axis, **kwargs)
 
     def _validate_input_units(self, inputs, equivalencies=None, inputs_map=None):
-
         inputs = list(inputs)
         name = self.name or self.__class__.__name__
         # Check that the units are correct, if applicable
@@ -1779,6 +1778,26 @@ class Model(metaclass=_ModelMeta):
         new_model = self.copy()
         new_model._name = name
         return new_model
+
+    def with_units(
+        self,
+        input_units=None,
+        return_units=None,
+        input_units_equivalencies=None,
+        input_units_allow_dimensionless=False,
+        input_units_strict=False
+    ):
+        """
+        Wrap this (dimensionless) model with the specified input and return units.
+        """
+        return UnitsProxyModel(
+            self,
+            input_units=input_units,
+            return_units=return_units,
+            input_units_equivalencies=None,
+            input_units_allow_dimensionless=False,
+            input_units_strict=False
+        )
 
     @property
     def n_submodels(self):
@@ -2326,6 +2345,167 @@ SPECIAL_OPERATORS = {}
 
 def _add_special_operator(sop_name, sop):
     SPECIAL_OPERATORS[sop_name] = sop
+
+
+_PROXY_ATTRS = {
+    "input_units",
+    "return_units",
+    "input_units_equivalencies",
+    "input_units_allow_dimensionless",
+    "input_units_strict",
+    "_fix_inputs"
+}
+
+
+class UnitsProxyModel:
+    __slots__ = [
+        "_delegate",
+        "_input_units",
+        "_return_units",
+        "_input_units_equivalencies",
+        "_input_units_allow_dimensionless",
+        "_input_units_strict",
+    ]
+
+    def __init__(
+        self,
+        delegate,
+        input_units=None,
+        return_units=None,
+        input_units_equivalencies=None,
+        input_units_allow_dimensionless=False,
+        input_units_strict=False
+    ):
+        if input_units is not None and delegate.input_units:
+            raise ValueError("Cannot specify input_units for model with existing input units")
+
+        if return_units is not None and delegate.return_units:
+            raise ValueError("Cannot specify return_units for model with existing return units")
+
+        if input_units is not None:
+            if not isinstance(input_units, dict):
+                input_units = {i: input_units for i in delegate.inputs}
+
+            missing = [i for i in delegate.inputs if i not in input_units]
+            if len(missing) > 0:
+                raise ValueError("Missing input units for: " + ", ".join(missing))
+
+        if return_units is not None:
+            if not isinstance(return_units, dict):
+                return_units = {o: return_units for o in delegate.outputs}
+
+            missing = [o for o in delegate.outputs if o not in return_units]
+            if len(missing) > 0:
+                raise ValueError("Missing return units for: " + ", ".join(missing))
+
+        _set_proxy_attr(self, "_delegate", delegate)
+        _set_proxy_attr(self, "_input_units", input_units)
+        _set_proxy_attr(self, "_return_units", return_units)
+        _set_proxy_attr(self, "_input_units_equivalencies", input_units_equivalencies)
+        _set_proxy_attr(self, "_input_units_allow_dimensionless", input_units_allow_dimensionless)
+        _set_proxy_attr(self, "_input_units_strict", input_units_strict)
+
+    def __getattribute__(self, name):
+        if name in _PROXY_ATTRS:
+            return _get_proxy_attr(self, name)
+        else:
+            return getattr(_get_delegate(self), name)
+
+    def __setattr__(self, name, value):
+        setattr(_get_delegate(self), name, value)
+
+    def __str__(self):
+        return _get_delegate(self).__str__()
+
+    def __repr__(self):
+        delegate_repr = repr(_get_delegate(self))
+        input_units_repr = repr(_get_proxy_attr(self, "_input_units"))
+        return_units_repr = repr(_get_proxy_attr(self, "_return_units"))
+        return f"UnitsProxyModel({delegate_repr}, input_units={input_units_repr}, return_units={return_units_repr})"
+
+    def __len__(self):
+        return _get_delegate(self).__len__()
+
+    def __call__(self, *args, **kwargs):
+        inputs, kwargs = _get_delegate(self)._get_renamed_inputs_as_positional(*args, **kwargs)
+
+        input_units = _get_proxy_attr(self, "_input_units")
+        if input_units is not None:
+            if "equivalencies" in kwargs:
+                equivalencies = kwargs["equivalencies"]
+            else:
+                equivalencies = None
+
+            if "inputs_map" in kwargs:
+                inputs_map = kwargs["inputs_map"]
+            else:
+                inputs_map = None
+
+            inputs = _get_delegate(self).__class__._validate_input_units(self, inputs, equivalencies, inputs_map)
+            inputs = [i.value if isinstance(i, Quantity) else i for i in inputs]
+
+        outputs = _get_delegate(self).__call__(*inputs, **kwargs)
+
+        return_units = _get_proxy_attr(self, "_return_units")
+        if return_units is not None:
+            if not isinstance(outputs, tuple):
+                outputs = (outputs,)
+
+            outputs = tuple([Quantity(out, return_units.get(out_name, None), subok=True) for out, out_name in zip(outputs, self.outputs)])
+
+            if len(outputs) == 1:
+                outputs = outputs[0]
+
+        return outputs
+
+    @property
+    def input_units(self):
+        return _get_proxy_attr(self, "_input_units")
+
+    @property
+    def return_units(self):
+        return _get_proxy_attr(self, "_return_units")
+
+    @property
+    def input_units_equivalencies(self):
+        return _get_proxy_attr(self, "_input_units_equivalencies")
+
+    @property
+    def input_units_strict(self):
+        val = _get_proxy_attr(self, "_input_units_strict")
+        if isinstance(val, bool):
+            return {key: val for key in self.inputs}
+        else:
+            return dict(zip(self.inputs, val.values()))
+
+    @property
+    def input_units_allow_dimensionless(self):
+        val = _get_proxy_attr(self, "_input_units_allow_dimensionless")
+        if isinstance(val, bool):
+            return {key: val for key in self.inputs}
+        else:
+            return dict(zip(self.inputs, val.values()))
+
+    __add__ = _model_oper('+')
+    __sub__ = _model_oper('-')
+    __mul__ = _model_oper('*')
+    __truediv__ = _model_oper('/')
+    __pow__ = _model_oper('**')
+    __or__ = _model_oper('|')
+    __and__ = _model_oper('&')
+    _fix_inputs = _model_oper('fix_inputs')
+
+
+def _set_proxy_attr(proxy, name, value):
+    object.__setattr__(proxy, name, value)
+
+
+def _get_proxy_attr(proxy, name):
+    return object.__getattribute__(proxy, name)
+
+
+def _get_delegate(proxy):
+    return _get_proxy_attr(proxy, "_delegate")
 
 
 class CompoundModel(Model):
