@@ -79,7 +79,7 @@ jobs:
         # dependencies get correctly installed with pip.
         - name: Python 3.8 with required dependencies
           os: linux
-          env: SETUP_CMD='test --remote-data=astropy --readonly'
+          env: SETUP_CMD='test --remote-data=astropy --readonly astropy/visualization/wcsaxes/tests/test_images.py'
                LC_CTYPE=C.ascii LC_ALL=C
                PIP_DEPENDENCIES="" CONDA_DEPENDENCIES=""
                INSTALL_WITH_PIP=True
