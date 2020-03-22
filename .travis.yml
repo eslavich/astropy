@@ -117,4 +117,4 @@ install:
       fi
 
 script:
-    - $MAIN_CMD $SETUP_CMD
+    - pytest --remote-data=astropy astropy/visualization/wcsaxes/tests/test_images.py
