@@ -53,8 +53,10 @@ def pytest_configure(config):
     if HAS_MATPLOTLIB:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
+            import ipdb; ipdb.set_trace()
             matplotlibrc_cache.update(matplotlib.rcParams)
             matplotlib.rcdefaults()
+            matplotlib.use('Agg')
 
     # Make sure we use temporary directories for the config and cache
     # so that the tests are insensitive to local configuration. Note that this
