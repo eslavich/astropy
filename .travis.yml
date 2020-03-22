@@ -3,6 +3,8 @@
 # install Python ourselves using conda.
 language: c
 
+dist: bionic
+
 compiler: gcc
 
 # Cache can be cleared from the travis settings menu, see docs currently at
