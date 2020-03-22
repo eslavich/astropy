@@ -117,4 +117,6 @@ install:
       fi
 
 script:
+    - pip freeze
+    - conda list
     - pytest --remote-data=astropy astropy/visualization/wcsaxes/tests/test_images.py
