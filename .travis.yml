@@ -119,4 +119,4 @@ install:
       fi
 
 script:
-    - pip freeze && conda list && pytest --remote-data=astropy astropy/visualization/wcsaxes/tests/test_images.py
+    - pip install matplotlib==3.2.0 && pip freeze && conda list && pytest --remote-data=astropy astropy/visualization/wcsaxes/tests/test_images.py
