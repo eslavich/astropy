@@ -55,7 +55,6 @@ def pytest_configure(config):
             warnings.simplefilter('ignore')
             matplotlibrc_cache.update(matplotlib.rcParams)
             matplotlib.rcdefaults()
-            matplotlib.use('Agg')
 
     # Make sure we use temporary directories for the config and cache
     # so that the tests are insensitive to local configuration. Note that this
