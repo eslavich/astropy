@@ -32,7 +32,8 @@ from .tags.transform.tabular import *  # noqa
 from .tags.unit.quantity import *  # noqa
 from .tags.unit.unit import *  # noqa
 from .tags.unit.equivalency import *  # noqa
-from .types import _astropy_types, _astropy_asdf_types
+from .mappers.transform.basic import * # noqa
+from .types import _astropy_types, _astropy_asdf_types, _astropy_transform_mappers
 
 
 __all__ = ['AstropyExtension', 'AstropyAsdfExtension']
@@ -71,3 +72,21 @@ class AstropyAsdfExtension(BuiltinExtension):
     @property
     def types(self):
         return _astropy_asdf_types
+
+
+class AstropyTransformExtension(AsdfExtension):
+    @property
+    def types(self):
+        return []
+
+    @property
+    def mappers(self):
+        return _astropy_transform_mappers
+
+    @property
+    def tag_mapping(self):
+        return []
+
+    @property
+    def url_mapping(self):
+        return []

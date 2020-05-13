@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from asdf.types import CustomType, ExtensionTypeMeta
+from asdf.mapper import AsdfMapper, AsdfMapperMeta
 
 __all__ = ['AstropyType', 'AstropyAsdfType']
 
@@ -11,7 +12,6 @@ _TYPE_BASE_CLASS_NAMES = {'PolynomialTypeBase'}
 
 _astropy_types = set()
 _astropy_asdf_types = set()
-
 
 class AstropyTypeMeta(ExtensionTypeMeta):
     """
@@ -53,3 +53,22 @@ class AstropyAsdfType(CustomType, metaclass=AstropyTypeMeta):
     """
     organization = 'stsci.edu'
     standard = 'asdf'
+
+
+_MAPPER_BASE_CLASS_NAMES = {'AstropyTransformMapper', 'TransformMapper'}
+
+_astropy_transform_mappers = set()
+
+
+class AstropyTransformMapperMeta(AsdfMapperMeta):
+    def __new__(mcls, name, bases, attrs):
+        cls = super().__new__(mcls, name, bases, attrs)
+
+        if cls.__name__ not in _MAPPER_BASE_CLASS_NAMES:
+            _astropy_transform_mappers.add(cls)
+
+        return cls
+
+
+class AstropyTransformMapper(AsdfMapper, metaclass=AstropyTransformMapperMeta):
+    pass

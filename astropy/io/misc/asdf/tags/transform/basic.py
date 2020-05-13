@@ -10,7 +10,7 @@ from astropy.io.misc.asdf.types import AstropyAsdfType, AstropyType
 from . import _parameter_to_value
 
 
-__all__ = ['TransformType', 'IdentityType', 'ConstantType']
+__all__ = ['TransformType']
 
 
 class TransformType(AstropyAsdfType):
@@ -106,98 +106,6 @@ class TransformType(AstropyAsdfType):
         # TODO: If models become comparable themselves, remove this.
         assert a.name == b.name
         # TODO: Assert inverses are the same
-
-
-class IdentityType(TransformType):
-    name = "transform/identity"
-    types = ['astropy.modeling.mappings.Identity']
-
-    @classmethod
-    def from_tree_transform(cls, node, ctx):
-        return mappings.Identity(node.get('n_dims', 1))
-
-    @classmethod
-    def to_tree_transform(cls, data, ctx):
-        node = {}
-        if data.n_inputs != 1:
-            node['n_dims'] = data.n_inputs
-        return node
-
-    @classmethod
-    def assert_equal(cls, a, b):
-        # TODO: If models become comparable themselves, remove this.
-        TransformType.assert_equal(a, b)
-        assert (isinstance(a, mappings.Identity) and
-                isinstance(b, mappings.Identity) and
-                a.n_inputs == b.n_inputs)
-
-
-class ConstantType(TransformType):
-    name = "transform/constant"
-    version = '1.4.0'
-    supported_versions = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0']
-    types = ['astropy.modeling.functional_models.Const1D',
-             'astropy.modeling.functional_models.Const2D']
-
-    @classmethod
-    def from_tree_transform(cls, node, ctx):
-        if cls.version < AsdfVersion('1.4.0'):
-            # The 'dimensions' property was added in 1.4.0,
-            # previously all values were 1D.
-            return functional_models.Const1D(node['value'])
-        elif node['dimensions'] == 1:
-            return functional_models.Const1D(node['value'])
-        elif node['dimensions'] == 2:
-            return functional_models.Const2D(node['value'])
-
-    @classmethod
-    def to_tree_transform(cls, data, ctx):
-        if cls.version < AsdfVersion('1.4.0'):
-            if not isinstance(data, functional_models.Const1D):
-                raise ValueError(
-                    f'constant-{cls.version} does not support models with > 1 dimension')
-            return {
-                'value': _parameter_to_value(data.amplitude)
-            }
-        else:
-            if isinstance(data, functional_models.Const1D):
-                dimension = 1
-            elif isinstance(data, functional_models.Const2D):
-                dimension = 2
-            return {
-                'value': _parameter_to_value(data.amplitude),
-                'dimensions': dimension
-            }
-
-
-class GenericModel(mappings.Mapping):
-
-    def __init__(self, n_inputs, n_outputs):
-        mapping = tuple(range(n_inputs))
-        super().__init__(mapping)
-        self._n_outputs = n_outputs
-        self._outputs = tuple('x' + str(idx) for idx in range(n_outputs))
-
-    @property
-    def inverse(self):
-        raise NotImplementedError()
-
-
-class GenericType(TransformType):
-    name = "transform/generic"
-    types = [GenericModel]
-
-    @classmethod
-    def from_tree_transform(cls, node, ctx):
-        return GenericModel(
-            node['n_inputs'], node['n_outputs'])
-
-    @classmethod
-    def to_tree_transform(cls, data, ctx):
-        return {
-            'n_inputs': data.n_inputs,
-            'n_outputs': data.n_outputs
-        }
 
 
 class UnitsMappingType(AstropyType):
