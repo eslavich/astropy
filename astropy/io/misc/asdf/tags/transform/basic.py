@@ -56,8 +56,8 @@ class TransformType(AstropyAsdfType):
     @classmethod
     def from_tree(cls, node, ctx):
         model = cls.from_tree_transform(node, ctx)
-        yield model
         cls._from_tree_base_transform_members(model, node, ctx)
+        return model
 
     @classmethod
     def _to_tree_base_transform_members(cls, model, node, ctx):

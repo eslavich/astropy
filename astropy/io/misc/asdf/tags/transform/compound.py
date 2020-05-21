@@ -60,9 +60,9 @@ class CompoundType(TransformType):
         else:
             model = getattr(left, oper)(right)
 
-        yield model
-
         cls._from_tree_base_transform_members(model, node, ctx)
+
+        return model
 
     @classmethod
     def to_tree_tagged(cls, model, ctx):
